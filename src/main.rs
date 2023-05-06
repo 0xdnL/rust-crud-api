@@ -15,7 +15,7 @@ struct User {
     email: String,
 }
 
-const DB_URL: &str = !env("DATABASE_URL");
+const DB_URL: &str = env!("DB_URL");
 const RESPONSE_OK: &str = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n";
 const RESPONSE_NOT_FOUND: &str = "HTTP/1.1 404 NOT FOUND\r\n\r\n";
 const RESPONSE_INTERNAL_SERVER_ERROR: &str = "HTTP/1.1 500 INTERNAL SERVER ERROR\r\n\r\n";
@@ -50,12 +50,12 @@ fn handle_client(mut stream: TcpStream) {
             request.push_str(String::from_utf8_lossy(&buffer[..size]).as_ref());
 
             let (status_line, content) = match &*request {
-                r if request_with("POST /users") => handle_post_request(r),
-                r if request_with("GET /users") => handle_get_request(r),
-                r if request_with("GET /users") => handle_get_all_request(r),
-                r if request_with("PUT /users") => handle_put_request(r),
-                r if request_with("DELETE /users") => handle_delete_request(r),
-                _ => (NOT_FOUND, "Not found".to_string()),
+                r if r.starts_with("POST /users") => handle_post_request(r),
+                r if r.starts_with("GET /users") => handle_get_request(r),
+                r if r.starts_with("GET /users") => handle_get_all_request(r),
+                r if r.starts_with("PUT /users") => handle_put_request(r),
+                r if r.starts_with("DELETE /users") => handle_delete_request(r),
+                _ => (RESPONSE_NOT_FOUND.to_string(), "Not found".to_string()),
             };
 
             stream.write_all(format!("{}{}", status_line, content).as_bytes()).unwrap();
