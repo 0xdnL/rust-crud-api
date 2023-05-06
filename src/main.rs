@@ -3,6 +3,12 @@ use postgres::Error as PostgresError;
 use std::net::{TcpListener, TcpStream};
 use std::io::{Read, Write};
 use std::env;
+use log::info;
+use log::warn;
+use log::debug;
+use log::error;
+use log::log_enabled;
+use log::Level;
 
 #[macro_use]
 extern crate serde_derive;
@@ -16,18 +22,39 @@ struct User {
 }
 
 const DB_URL: &str = env!("DB_URL");
+const SERVER_PORT: &str = "8080";
 const RESPONSE_OK: &str = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n";
 const RESPONSE_NOT_FOUND: &str = "HTTP/1.1 404 NOT FOUND\r\n\r\n";
 const RESPONSE_INTERNAL_SERVER_ERROR: &str = "HTTP/1.1 500 INTERNAL SERVER ERROR\r\n\r\n";
 
 fn main() {
+
     if let Err(e) = set_database() {
         println!("Error: {}", e);
         return;
     }
 
-    let listener = TcpListener::bind(format!("0.0.0.0:8080")).unwrap();
-    println!("Server started at port 8080");
+    env_logger::init();
+
+    // debug!("Mary has a little lamb");
+    // warn!("{}", "The lamb was sure to go");
+    // warn!("{:#?}", "The lamb was sure to go");
+    // warn!("server started at port {} ..", SERVER_PORT);
+
+    if log_enabled!(Level::Error) {
+        error!("Error: {}", "Its fleece was white as snow");
+    }
+
+    if log_enabled!(Level::Info) {
+        info!("{}", "And every where that Mary went");
+        info!("{:?}", "And every where that Mary went");
+        info!("{}", "server started at port");
+    } else {
+        println!("log_enabled!(Level::Info) not enabled !");
+    }
+
+    let listener = TcpListener::bind(format!("0.0.0.0:{}", SERVER_PORT)).unwrap();
+    println!("server started at port {} ..", SERVER_PORT);
 
     for stream in listener.incoming() {
         match stream {
@@ -51,7 +78,7 @@ fn handle_client(mut stream: TcpStream) {
 
             let (status_line, content) = match &*request {
                 r if r.starts_with("POST /users") => handle_post_request(r),
-                r if r.starts_with("GET /users") => handle_get_request(r),
+                r if r.starts_with("GET /user/") => handle_get_request(r),
                 r if r.starts_with("GET /users") => handle_get_all_request(r),
                 r if r.starts_with("PUT /users") => handle_put_request(r),
                 r if r.starts_with("DELETE /users") => handle_delete_request(r),
@@ -82,7 +109,9 @@ fn handle_post_request(request: &str) -> (String, String) {
 }
 
 fn handle_get_request(request: &str) -> (String, String) {
+    println!("handle_get_request: {}", request);
     match (get_id(&request).parse::<i32>(), Client::connect(DB_URL, NoTls)) {
+
         (Ok(id), Ok(mut client)) =>
             match client.query_one("SELECT * FROM users WHERE id = $1", &[&id]) {
                 Ok(row) => {
@@ -97,11 +126,20 @@ fn handle_get_request(request: &str) -> (String, String) {
                 _ => (RESPONSE_NOT_FOUND.to_string(), "User not found".to_string()),
             }
 
-        _ => (RESPONSE_INTERNAL_SERVER_ERROR.to_string(), "Internal error".to_string()),
+        (Err(e_db),Err(e_client)) => {
+                println!("handle_get_request: {}, {}", e_db, e_client);
+                (RESPONSE_INTERNAL_SERVER_ERROR.to_string(), "Internal error: handle_get_request".to_string())
+        }
+
+        _ => {
+            println!("handle_get_request..");
+            (RESPONSE_INTERNAL_SERVER_ERROR.to_string(), "Internal error: handle_get_request".to_string())
+        }
     }
 }
 
 fn handle_get_all_request(_request: &str) -> (String, String) {
+    println!("handle_get_all_request..");
     match Client::connect(DB_URL, NoTls) {
         Ok(mut client) => {
             let mut users = Vec::new();
@@ -116,7 +154,11 @@ fn handle_get_all_request(_request: &str) -> (String, String) {
 
             (RESPONSE_OK.to_string(), serde_json::to_string(&users).unwrap())
         }
-        _ => (RESPONSE_INTERNAL_SERVER_ERROR.to_string(), "Internal error".to_string()),
+        Err(e) => {
+            println!("handle_get_all_request: {}", e);
+            (RESPONSE_INTERNAL_SERVER_ERROR.to_string(), "Internal error: handle_get_all_request".to_string())
+        }
+        // _ => (RESPONSE_INTERNAL_SERVER_ERROR.to_string(), "Internal error".to_string()),
     }
 }
 
@@ -138,7 +180,7 @@ fn handle_put_request(request: &str) -> (String, String) {
 
             (RESPONSE_OK.to_string(), "User updated".to_string())
         }
-        _ => (RESPONSE_INTERNAL_SERVER_ERROR.to_string(), "Internal error".to_string()),
+        _ => (RESPONSE_INTERNAL_SERVER_ERROR.to_string(), "Internal error: handle_put_request".to_string()),
     }
 }
 
@@ -153,7 +195,7 @@ fn handle_delete_request(request: &str) -> (String, String) {
 
             (RESPONSE_OK.to_string(), "User deleted".to_string())
         }
-        _ => (RESPONSE_INTERNAL_SERVER_ERROR.to_string(), "Internal error".to_string()),
+        _ => (RESPONSE_INTERNAL_SERVER_ERROR.to_string(), "Internal error: handle_delete_request".to_string()),
     }
 }
 
