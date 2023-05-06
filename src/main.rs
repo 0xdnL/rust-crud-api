@@ -9,6 +9,7 @@ use log::debug;
 use log::error;
 use log::log_enabled;
 use log::Level;
+use env_logger::Builder;
 
 #[macro_use]
 extern crate serde_derive;
@@ -21,7 +22,8 @@ struct User {
     email: String,
 }
 
-const DB_URL: &str = env!("DB_URL");
+// const DB_URL: &str = env!("DB_URL");
+const DB_URL: &str ="postgres://postgres:postgres@localhost:5432/postgres";
 const SERVER_PORT: &str = "8080";
 const RESPONSE_OK: &str = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n";
 const RESPONSE_NOT_FOUND: &str = "HTTP/1.1 404 NOT FOUND\r\n\r\n";
@@ -33,25 +35,34 @@ fn main() {
         println!("Error: {}", e);
         return;
     }
+    Builder::new().init();
+    // .parse_env(&env::var("MY_APP_LOG").unwrap_or_default())
 
-    env_logger::init();
+    /*
+        RUST_LOG="main::log::target=info"
+     */
+    log::info!("informational message");
+    log::warn!("warning message");
+    log::error!("this is an error {}", "message");
 
-    // debug!("Mary has a little lamb");
-    // warn!("{}", "The lamb was sure to go");
-    // warn!("{:#?}", "The lamb was sure to go");
-    // warn!("server started at port {} ..", SERVER_PORT);
-
-    if log_enabled!(Level::Error) {
-        error!("Error: {}", "Its fleece was white as snow");
-    }
-
-    if log_enabled!(Level::Info) {
-        info!("{}", "And every where that Mary went");
-        info!("{:?}", "And every where that Mary went");
-        info!("{}", "server started at port");
-    } else {
-        println!("log_enabled!(Level::Info) not enabled !");
-    }
+//     env_logger::init();
+//
+//     // debug!("Mary has a little lamb");
+//     // warn!("{}", "The lamb was sure to go");
+//     // warn!("{:#?}", "The lamb was sure to go");
+//     // warn!("server started at port {} ..", SERVER_PORT);
+//
+//     if log_enabled!(Level::Error) {
+//         error!("Error: {}", "Its fleece was white as snow");
+//     }
+//
+//     if log_enabled!(Level::Info) {
+//         info!("{}", "And every where that Mary went");
+//         info!("{:?}", "And every where that Mary went");
+//         info!("{}", "server started at port");
+//     } else {
+//         println!("log_enabled!(Level::Info) not enabled !");
+//     }
 
     let listener = TcpListener::bind(format!("0.0.0.0:{}", SERVER_PORT)).unwrap();
     println!("server started at port {} ..", SERVER_PORT);

@@ -44,3 +44,4 @@ curl -i -XDELETE localhost:8080/users/3
 ## see also
 
 - [doc.rust-lang.org/rust-by-example/flow_control/match](https://doc.rust-lang.org/rust-by-example/flow_control/match.html)
+- [docs.rs/env_logger/0.10.0/env_logger/#enabling-logging](https://docs.rs/env_logger/0.10.0/env_logger/#enabling-logging)
